@@ -3,6 +3,7 @@ local Life = {}
 local conf = require "conf"
 
 Life.world = {}
+Life.age = 0
 local world = Life.world
 local switch = 0
 local size = conf.worldSize
@@ -28,6 +29,7 @@ end
 
 function Life.worldReset(isRandom)
 	switch=0
+	Life.age = 0
 	setmetatable(world, metaWrapWorld)
 	for y = 1, size do
 		Life.world[y]={}
@@ -63,7 +65,8 @@ function Life.updateCell(x,y)
 end
 
 function Life.step()
-	switch = 1 - switch
+	Life.age = Life.age + 1
+	switch = 1 - switch				-- swtich 0 and 1
 	for y = 1, size do
 		for x = 1, size do
 			Life.updateCell(x,y)
@@ -75,7 +78,7 @@ function Life.draw()
 	LG.setColor(1,1,1,1)
 	for y = 1, size do
 		for x = 1, size do
-			if  world[x][y]~= 0 then
+			if  world[x][y] % 2 == 1 then
 				LG.circle("fill",x,y,1)
 			end
 		end

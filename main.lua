@@ -14,6 +14,7 @@ function love.load()
 
 	Life.worldReset(true)
 
+	frame = 0
 
 end
 
@@ -26,7 +27,10 @@ function love.mousereleased(x,y,button)
 end
 
 function love.update()
-	Life.step()
+	frame = frame + 1
+	if frame % conf.delayFrames == 0 then
+		Life.step()
+	end
 end
 
 function love.draw()
