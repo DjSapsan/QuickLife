@@ -1,7 +1,10 @@
 local conf = {}
 
-conf.worldSize = 500
+conf.size = 512
 conf.randomseed = os.time()
-conf.delayFrames = 60
+conf.speed = 60
+conf.iters = 1
+conf.scale = 1
+
 
 return conf

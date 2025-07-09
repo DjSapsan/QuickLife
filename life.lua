@@ -1,102 +1,190 @@
 local Life = {}
 
 local conf = require "conf"
+local scale = conf.scale
 
-Life.world = {}
 Life.age = 0
-local world = Life.world
-local switch = 0
-local size = conf.worldSize
+local world = {}
+local buffer = {}
 
+local size = conf.size
+local area = size * size
+
+local floor,rng = math.floor,math.random
 local LG = love.graphics
 
-local rng = math.random
-
--- only for +-1 index outside
-local metaWrapWorld = {}
-metaWrapWorld.__index = function(t, key)
-	if key<1 then
-		return t[size]
-	elseif key>size then
-		return t[1]
+-- prob 0 .. 100
+local nextValue = function(prob)
+	if prob > 0 and prob >= rng(0,100) then
+		return 1
 	end
-end
-
-local nextValue = function(isRandom)
-	if isRandom then return rng(0,1) end
 	return 0
 end
 
-function Life.worldReset(isRandom)
-	switch=0
+function Life.worldReset(prob)
 	Life.age = 0
-	setmetatable(world, metaWrapWorld)
-	for y = 1, size do
-		Life.world[y]={}
-		setmetatable(world[y], metaWrapWorld)
-		for x = 1, size do
-			world[y][x] = nextValue(isRandom)
-		end
+	local value = 0
+	for pos = 0, area-1 do
+		value = nextValue(prob)
+		world[pos] = value
+		buffer[pos] = value
 	end
 end
 
-function Life.countAround(x,y)
-	return
-	world[x-1][y-1] +
-	world[x-1][y  ] +
-	world[x-1][y+1] +
-	world[x  ][y-1] +
-	world[x  ][y+1] +
-	world[x+1][y-1] +
-	world[x+1][y  ] +
-	world[x+1][y+1]
+local function countCenter(pos)
+  return  world[pos - size - 1]
+        + world[pos - size    ]
+        + world[pos - size + 1]
+        + world[pos     - 1]
+        + world[pos     + 1]
+        + world[pos + size - 1]
+        + world[pos + size    ]
+        + world[pos + size + 1]
 end
 
-function Life.updateCell(x,y)
-	local currentState = world[x][y]
-	local nextState = currentState
-	local around = Life.countAround(x,y)
+local function countLeftEdge(pos)
+  return  world[pos - 1]
+        + world[pos - size]
+        + world[pos - size + 1]
+        + world[pos + size - 1]
+        + world[pos + 1]
+        + world[pos + 2*size - 1]
+        + world[pos + size]
+        + world[pos + size + 1]
+end
+
+local function countRightEdge(pos)
+  return  world[pos - size - 1]
+        + world[pos - size]
+        + world[pos - 2*size + 1]
+        + world[pos - 1]
+        + world[pos - (size - 1)]
+        + world[pos + size - 1]
+        + world[pos + size]
+        + world[pos + 1]
+end
+
+local function countTopEdge(pos)
+  return  world[pos + area - size - 1]
+        + world[pos + area - size]
+        + world[pos + area - size + 1]
+        + world[pos - 1]
+        + world[pos + 1]
+        + world[pos + size - 1]
+        + world[pos + size]
+        + world[pos + size + 1]
+end
+
+local function countBottomEdge(pos)
+  return  world[pos - size - 1]
+        + world[pos - size]
+        + world[pos - size + 1]
+        + world[pos - 1]
+        + world[pos + 1]
+        + world[(pos - area + size) - 1]
+        + world[pos - area + size]
+        + world[(pos - area + size) + 1]
+end
+
+local function countTopLeft()
+  return  world[area - 1]
+        + world[area - size]
+        + world[area - size + 1]
+        + world[size - 1]
+        + world[1]
+        + world[2*size - 1]
+        + world[size]
+        + world[size + 1]
+end
+
+local function countTopRight()
+  return  world[area - size - 2]
+        + world[area - 1]
+        + world[area - size]
+        + world[size - 2]
+        + world[0]
+        + world[2*size - 2]
+        + world[2*size - 1]
+        + world[size]
+end
+
+local function countBottomLeft()
+  return  world[area - size - 1]
+        + world[area - 2*size]
+        + world[area - 2*size + 1]
+        + world[area - 1]
+        + world[area - size + 1]
+        + world[size - 1]
+        + world[0]
+        + world[1]
+end
+
+local function countBottomRight()
+  return  world[area - size - 2]
+        + world[area - size - 1]
+        + world[area - 2*size]
+        + world[area - 2]
+        + world[area - size]
+        + world[size - 2]
+        + world[size - 1]
+        + world[0]
+end
+
+local function suffer(pos, F)
+	local around = F(pos)
 	if around == 3 then
-		--nextState = (currentState + 1 + switch)%4
-	elseif around <= 1 or around > 3 then
-		--nextState = currentState - 1 - switch
+		return 1
+	elseif world[pos] == 1 and (around == 2 or around ==3) then
+		return 1
+	elseif around < 3 or around > 3 then
+		return 0
 	end
-	world[x][y] = math.random(0,1) --nextState
 end
 
+local pos = 0
 function Life.step()
+
 	Life.age = Life.age + 1
-	switch = 1 - switch				-- swtich 0 and 1
-	for y = 1, size do
-		for x = 1, size do
-			Life.updateCell(x,y)
+
+	for x = 1, size - 2 do
+		for y = 1, size - 2 do
+			pos = y * size + x
+			buffer[pos] = suffer(pos, countCenter)
 		end
 	end
-end
 
-function Life.draw()
-	LG.setColor(1,1,1,1)
-	for y = 1, size do
-		for x = 1, size do
-			if  world[x][y] % 2 == 1 then
-				LG.circle("fill",x,y,1)
-			end
-		end
+	buffer[0] = suffer(0, countTopLeft)
+	buffer[size] = suffer(size, countTopRight)
+	buffer[area - size] = suffer(pos, countBottomLeft)
+	buffer[area - 1] = suffer(pos, countBottomRight)
+
+	for pos = 1, size - 2 do
+		buffer[pos] = suffer(pos, countTopEdge)
 	end
+
+	for pos = size, area-size-size, size do
+		buffer[pos] = suffer(pos, countLeftEdge)
+	end
+
+	for pos = size + size-1, area-size, size do
+		buffer[pos] = suffer(pos, countRightEdge)
+	end
+
+	for pos = area - size + 1, area - 2 do
+		buffer[pos] = suffer(pos, countBottomEdge)
+	end
+
+	world, buffer = buffer, world
+
 end
 
--- function Life.consolePrintWorld()
--- 	cls()
--- 	local v
--- 	local str=""
--- 	for y = 1, size do
--- 		for x = 1, size do
--- 			v = world[x][y]
--- 			if v==1 then str=str.."#" else str=str.."-" end
--- 		end
--- 		str=str.."\n"
--- 	end
--- 	print(str)
--- end
+function Life.setCell(pos, value)
+	world[pos] = value
+	buffer[pos] = value
+end
+
+function Life.getWorld()
+	return world
+end
 
 return Life
