@@ -1,6 +1,6 @@
 local conf = {}
 
-conf.size = 512
+conf.size = 1024
 conf.randomseed = os.time()
 conf.speed = 60
 conf.iters = 1

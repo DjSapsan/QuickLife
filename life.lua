@@ -11,7 +11,6 @@ local size = conf.size
 local area = size * size
 
 local floor,rng = math.floor,math.random
-local LG = love.graphics
 
 -- prob 0 .. 100
 local nextValue = function(prob)
@@ -146,8 +145,8 @@ function Life.step()
 
 	Life.age = Life.age + 1
 
-	for x = 1, size - 2 do
-		for y = 1, size - 2 do
+	for y = 1, size - 2 do
+		for x = 1, size - 2 do
 			pos = y * size + x
 			buffer[pos] = suffer(pos, countCenter)
 		end
@@ -185,6 +184,10 @@ end
 
 function Life.getWorld()
 	return world
+end
+
+function Life.setWorld(w)
+	world = w
 end
 
 return Life
